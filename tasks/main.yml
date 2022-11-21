@@ -33,13 +33,15 @@
   check_mode: false
   register: checkmkagents
   when:
-    - checkmk_agent_version is not defined
+    - checkmk_agent_version is not defined | bool
+    - download_checkmk_agent_deb | default(true) | bool
 
 - name: register agent version from server
   ansible.builtin.set_fact:
     _checkmk_agent_deb: '{{ checkmkagents.content | regex_search("check-mk-agent_[0-9]\.[0-9]\.[0-9]p[0-9]+-1_all.deb") }}'
   when:
-    - checkmk_agent_version is not defined
+    - checkmk_agent_version is not defined | bool
+    - download_checkmk_agent_deb | default(true) | bool
     - not checkmkagents.failed
     - checkmkagents.status == 200
 
@@ -47,16 +49,18 @@
   ansible.builtin.set_fact:
     checkmk_agent_version: '{{ _checkmk_agent_deb | regex_search("[0-9]\.[0-9]\.[0-9]p[0-9]+") }}'
   when:
-    - checkmk_agent_version is not defined
-    - _checkmk_agent_deb is defined
+    - checkmk_agent_version is not defined | bool
+    - _checkmk_agent_deb is defined | bool
 
 - name: ensure we could determine the checkmk_agent_version
   ansible.builtin.assert:
     quiet: true
     msg: "checkmk_agent_version can not be determined from server"
     that:
-      - checkmk_agent_version is defined
+      - checkmk_agent_version is defined | bool
       - checkmk_agent_version | length > 0
+  when:
+    - download_checkmk_agent_deb | default(true) | bool
 
 - name: fetch {{ checkmk_agent_deb }}
   delegate_to: localhost
@@ -65,7 +69,7 @@
     dest: "{{ _local_tmp }}/{{ checkmk_agent_deb }}"
     force: false
     mode: 0600
-  when: download_checkmk_agent_deb | default(true)
+  when: download_checkmk_agent_deb | default(true) | bool
   tags:
     - molecule-notest
 
@@ -75,7 +79,7 @@
     dest: /var/tmp/{{ checkmk_agent_deb }}
     force: false
     mode: 0600
-  when: download_checkmk_agent_deb | default(true)
+  when: download_checkmk_agent_deb | default(true) | bool
   tags:
     - molecule-notest
 
@@ -84,7 +88,7 @@
     deb: /var/tmp/{{ checkmk_agent_deb }}
   when:
     - ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
-    - not skip_checkmk_agent_deb|default(false)
+    - not skip_checkmk_agent_deb | default(false)
     - not ansible_check_mode
 
 - name: install required packages
